@@ -1,10 +1,5 @@
 package com.github.pavlospt.refactoredumbrella.ui.home
 
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.Toast
 import androidx.compose.foundation.Text
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,70 +7,36 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Button
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.ScaffoldState
+import androidx.compose.material.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedTask
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.fragment.app.Fragment
-import androidx.ui.tooling.preview.Preview
-import com.github.pavlospt.refactoredumbrella.ui.design_system.RefactoredUmbrellaTheme
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
-import org.koin.androidx.viewmodel.ext.android.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.navigate
+import com.github.pavlospt.refactoredumbrella.navigation.NavRoute
 
-@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
-class HomeFragment : Fragment() {
-
-    private val homeViewModel: HomeViewModel by viewModel()
-
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? = ComposeView(requireContext()).apply {
-        setContent {
-            RefactoredUmbrellaTheme {
-                RepoInputs { repoName, repoStars ->
-                    homeViewModel
-                        .processIntent(
-                            HomeViewIntent.AddGithubRepo(
-                                repoName = repoName,
-                                repoStars = repoStars
-                            )
-                        )
-                }
-            }
-        }
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        homeViewModel.uiEvents.observe(viewLifecycleOwner, { renderUIEvent(it) })
-    }
-
-    private fun renderUIEvent(homeUIEvent: HomeUIEvent) {
-        when (homeUIEvent) {
-            HomeUIEvent.RepoAdded -> Toast.makeText(
-                requireContext(),
-                "Repo added",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
-}
-
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun RepoInputs(
-    onRepoAdd: (String, Int) -> Unit
+fun HomeScreen(
+    navController: NavController,
+    scaffoldState: ScaffoldState,
+    homeViewModel: HomeViewModel,
+    navigateToDashboard: Boolean = false
 ) {
     val repoName = remember { mutableStateOf(TextFieldValue("")) }
     val repoStars = remember { mutableStateOf(TextFieldValue("")) }
+    val uiEvents by homeViewModel.uiEvents.observeAsState()
 
     Column(verticalArrangement = Arrangement.Top) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
@@ -100,22 +61,34 @@ fun RepoInputs(
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
-                    onRepoAdd(
-                        repoName.value.text,
-                        repoStars.value.text.toInt()
+                    homeViewModel.processIntent(
+                        intentHome = HomeViewIntent.AddGithubRepo(
+                            repoName = repoName.value.text,
+                            repoStars = repoStars.value.text.toInt()
+                        )
                     )
                     repoName.value = TextFieldValue("")
                     repoStars.value = TextFieldValue("")
+
+                    if (navigateToDashboard) {
+                        navController.navigate(NavRoute.Dashboard.route)
+                    }
                 }
             ) {
                 Text(text = "Add repo")
             }
         }
+        when (uiEvents) {
+            HomeUIEvent.RepoAdded ->
+                SuccessSnackbar(snackbarHostState = scaffoldState.snackbarHostState)
+            else -> Unit
+        }
     }
 }
 
-@Preview(showBackground = true)
+@ExperimentalMaterialApi
 @Composable
-fun RepoInputsPreview() {
-    RepoInputs(onRepoAdd = { _, _ -> })
+fun SuccessSnackbar(snackbarHostState: SnackbarHostState) {
+    val message = stringResource(id = R.string.repo_added_feedback_text)
+    LaunchedTask { snackbarHostState.showSnackbar(message = message) }
 }

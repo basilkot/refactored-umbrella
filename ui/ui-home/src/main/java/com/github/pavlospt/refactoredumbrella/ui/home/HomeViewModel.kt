@@ -17,7 +17,7 @@ class HomeViewModel(private val addRepoUseCase: AddRepoUseCase) : ViewModel() {
 
     private val _intentChannel = MutableStateFlow<HomeViewIntent>(HomeViewIntent.NotEmitted)
 
-    private val _uiEvents: MutableLiveData<HomeUIEvent> = MutableLiveData()
+    private val _uiEvents: MutableLiveData<HomeUIEvent> = MutableLiveData(HomeUIEvent.None)
     val uiEvents: LiveData<HomeUIEvent>
         get() = _uiEvents
 
